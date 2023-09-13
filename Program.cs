@@ -125,7 +125,11 @@ app.MapGet("/api/genres", (LoncotesLibraryDbContext db) =>
 // The librarians want to see a list of library patrons.
 app.MapGet("/api/patrons", (LoncotesLibraryDbContext db) =>
 {
-    return db.Patrons.ToList();
+    return db.Patrons
+    .Include(p => p.Checkouts)
+    .ThenInclude(c => c.Material)
+    .ThenInclude(m => m.MaterialType)
+    .ToList();
 });
 
 // This endpoint should get a patron and include their checkouts, and further include the materials and their material types.
@@ -138,6 +142,7 @@ app.MapGet("/api/patrons/{patronId}", (LoncotesLibraryDbContext db, int patronId
     .SingleOrDefault(p => p.Id == patronId);
     return Results.Ok(query);
 });
+
 
 // Sometimes patrons move or change their email address. Add an endpoint that updates these properties only.
 app.MapPut("/api/patrons/{patronId}", (LoncotesLibraryDbContext db, int patronId, Patron patron) =>
@@ -169,7 +174,7 @@ app.MapPut("/api/deactivatepatrons/{patronId}", (LoncotesLibraryDbContext db, in
 });
 
 // The librarians need to be able to checkout items for patrons. Add an endpoint to create a new Checkout for a material and patron. Automatically set the checkout date to DateTime.Today.
-app.MapPost("/api/checkouts", (LoncotesLibraryDbContext db, Checkout newCheckout) =>
+app.MapPost("/api/itemcheckouts", (LoncotesLibraryDbContext db, Checkout newCheckout) =>
 {
     newCheckout.CheckoutDate = DateTime.Today;
     newCheckout.Material = db.Materials.SingleOrDefault(m => m.Id == newCheckout.MaterialId);
@@ -179,6 +184,7 @@ app.MapPost("/api/checkouts", (LoncotesLibraryDbContext db, Checkout newCheckout
     return Results.Created($"/api/checkouts/{newCheckout.Id}", newCheckout);
 });
 
+// The librarians need an endpoint to mark a checked out item as returned by item id. Add an endpoint expecting a checkout id, and update the checkout with a return date of DateTime.Today.
 app.MapPut("/api/checkouts/return/{id}", (LoncotesLibraryDbContext db, int id) =>
 {
     Checkout checkoutToReturn = db.Checkouts.SingleOrDefault(checkout => checkout.Id == id);
@@ -190,4 +196,28 @@ app.MapPut("/api/checkouts/return/{id}", (LoncotesLibraryDbContext db, int id) =
     db.SaveChanges();
     return Results.NoContent();
 });
+
+// Let's create an endpoint to get all materials (with their genre and material type) that are currently available (not checked out, and not removed from circulation). A checked out material will have a related checkout that has a ReturnDate of null.
+app.MapGet("/api/materials/available", (LoncotesLibraryDbContext db) =>
+{
+    return db.Materials
+    .Where(m => m.OutOfCirculationSince == null)
+    .Where(m => m.Checkouts.All(co => co.ReturnDate != null))
+    .ToList();
+});
+
+// The librarians want to see all overdue checkouts so that they can send emails to the patrons that need to return the books. Let's create an endpoint that does this.
+app.MapGet("/api/checkouts/overdue", (LoncotesLibraryDbContext db) =>
+{
+    return db.Checkouts
+    .Include(p => p.Patron)
+    .Include(co => co.Material)
+    .ThenInclude(m => m.MaterialType)
+    .Where(co =>
+        (DateTime.Today - co.CheckoutDate).Days >
+        co.Material.MaterialType.CheckoutDays &&
+        co.ReturnDate == null)
+    .ToList();
+});
+
 app.Run();

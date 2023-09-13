@@ -16,4 +16,40 @@ public class Patron
     [Required]
     public bool IsActive { get; set; }
     public List<Checkout> Checkouts { get; set; }
+    // public decimal? Balance
+    // {
+    //     get
+    //     {
+    //         // no current checkouts, assuming any late fees have already been paid, there would be no late fees, return 0
+    //         if (Checkouts == null)
+    //         {
+    //             return 0;
+    //         }
+    //         else
+    //         // return checkouts where Paid = false
+    //         // sum Late Fees
+    //         {
+    //             return Checkouts
+    //             .Where(co => co.Paid == false)
+    //             .Sum(co => co.LateFee);
+    //         }
+    //     }
+    // }
+
+    public decimal? Balance
+    {
+        get
+        {
+            decimal? totalBalance = 0M;
+
+            foreach (Checkout checkout in Checkouts)
+            {
+                if (checkout.Paid == false)
+                {
+                    totalBalance += checkout.LateFee;
+                }
+            }
+            return totalBalance;
+        }
+    }
 }

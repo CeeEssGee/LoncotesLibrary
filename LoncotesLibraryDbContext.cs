@@ -58,7 +58,8 @@ public class LoncotesLibraryDbContext : DbContext
         // seed data with checkouts
         modelBuilder.Entity<Checkout>().HasData(new Checkout[]
         {
-            new Checkout {Id = 1, MaterialId = 1, PatronId = 1, CheckoutDate = new DateTime(2023, 09, 11)}
+            new Checkout {Id = 1, MaterialId = 1, PatronId = 1, CheckoutDate = new DateTime(2023, 09, 11)},
+            new Checkout {Id = 2, MaterialId = 2, PatronId = 2, CheckoutDate = new DateTime(2023, 09, 12)}
         });
     }
 
