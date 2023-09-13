@@ -49,31 +49,33 @@ app.MapGet("/api/materials", (LoncotesLibraryDbContext db, int? materialTypeId, 
     var query = db.Materials
     .Include(m => m.Genre)
     .Include(m => m.MaterialType)
-    .Where(m => m.OutOfCirculationSince == null)
-    .Select(m => new Material
-    {
-        Id = m.Id,
-        MaterialName = m.MaterialName,
-        MaterialTypeId = m.MaterialTypeId,
-        GenreId = m.GenreId,
-        OutOfCirculationSince = m.OutOfCirculationSince,
-        MaterialType = db.MaterialTypes.FirstOrDefault(mt => m.Id == m.MaterialTypeId),
-        Genre = db.Genres.FirstOrDefault(g => g.Id == m.GenreId)
-    }).ToList();
+    .Where(m => m.OutOfCirculationSince == null);
+    // .Select(m => new Material
+    // {
+    //     Id = m.Id,
+    //     MaterialName = m.MaterialName,
+    //     MaterialTypeId = m.MaterialTypeId,
+    //     GenreId = m.GenreId,
+    //     OutOfCirculationSince = m.OutOfCirculationSince,
+    //     // MaterialType = db.MaterialTypes.FirstOrDefault(mt => m.Id == m.MaterialTypeId),
+    //     // Genre = db.Genres.FirstOrDefault(g => g.Id == m.GenreId)
+    // })
+    // .ToList();
 
-    if (materialTypeId != null)
-    {
-        query = query
-        .Where(m => m.MaterialTypeId == materialTypeId).ToList();
-    }
-
-    if (genreId != null)
+    if (materialTypeId.HasValue)
     {
         query = query
-        .Where(g => g.GenreId == genreId).ToList();
+        .Where(m => m.MaterialTypeId == materialTypeId);
     }
 
-    return query;
+    if (genreId.HasValue)
+    {
+        query = query
+        .Where(g => g.GenreId == genreId);
+    }
+
+
+    return query.OrderBy(m => m.Id).ToList();
 });
 
 // The librarians would like to see details for a material. Include the Genre, MaterialType, and Checkouts (as well as the Patron associated with each checkout using ThenInclude).
@@ -84,7 +86,7 @@ app.MapGet("/api/materials/{materialId}", (LoncotesLibraryDbContext db, int mate
     .Include(m => m.MaterialType) // material to m.MaterialType
     .Include(m => m.Checkouts) // material to m.Checkouts (added)
     .ThenInclude(c => c.Patron) // checkout to c.Patron
-    .Where(m => m.Id == materialId)
+    .SingleOrDefault(m => m.Id == materialId)
     );
 
 });
@@ -98,7 +100,7 @@ app.MapPost("/api/materials", (LoncotesLibraryDbContext db, Material material) =
 });
 
 // Add an endpoint that expects an id in the url, which sets the OutOfCirculationSince property of the material that matches the material id to DateTime.Now. (This is called a soft delete, where a row is not deleted from the database, but instead has a flag that says the row is no longer active.) The endpoint to get all materials should already be filtering these items out.
-app.MapPut("/api/materials/{materialId}", (LoncotesLibraryDbContext db, int materialId) =>
+app.MapPut("/api/materials/outofcirc/{materialId}", (LoncotesLibraryDbContext db, int materialId) =>
 {
     Material foundMaterial = db.Materials.SingleOrDefault(m => m.Id == materialId);
     if (foundMaterial == null)
@@ -203,6 +205,7 @@ app.MapGet("/api/materials/available", (LoncotesLibraryDbContext db) =>
     return db.Materials
     .Where(m => m.OutOfCirculationSince == null)
     .Where(m => m.Checkouts.All(co => co.ReturnDate != null))
+    .OrderBy(m => m.Id)
     .ToList();
 });
 
