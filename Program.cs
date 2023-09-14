@@ -176,14 +176,19 @@ app.MapPut("/api/patrons/deactivate/{patronId}", (LoncotesLibraryDbContext db, i
 });
 
 // The librarians need to be able to checkout items for patrons. Add an endpoint to create a new Checkout for a material and patron. Automatically set the checkout date to DateTime.Today.
-app.MapPost("/api/itemcheckouts", (LoncotesLibraryDbContext db, Checkout newCheckout) =>
+app.MapPost("/api/checkouts", (LoncotesLibraryDbContext db, Checkout newCheckout) =>
 {
     newCheckout.CheckoutDate = DateTime.Today;
-    newCheckout.Material = db.Materials.SingleOrDefault(m => m.Id == newCheckout.MaterialId);
-    newCheckout.Patron = db.Patrons.SingleOrDefault(p => p.Id == newCheckout.PatronId);
+    // newCheckout.Material = db.Materials.SingleOrDefault(m => m.Id == newCheckout.MaterialId);
+    // newCheckout.Patron = db.Patrons.SingleOrDefault(p => p.Id == newCheckout.PatronId);
     db.Checkouts.Add(newCheckout);
     db.SaveChanges();
-    return Results.Created($"/api/checkouts/{newCheckout.Id}", newCheckout);
+
+    Checkout newerCheckout = db.Checkouts
+    .Include(c => c.Material)
+    .ThenInclude(m => m.MaterialType)
+    .SingleOrDefault(c => c.Id == newCheckout.Id);
+    return Results.Created($"/api/checkouts/{newCheckout.Id}", newerCheckout);
 });
 
 // The librarians need an endpoint to mark a checked out item as returned by item id. Add an endpoint expecting a checkout id, and update the checkout with a return date of DateTime.Today.
@@ -203,6 +208,8 @@ app.MapPut("/api/checkouts/return/{id}", (LoncotesLibraryDbContext db, int id) =
 app.MapGet("/api/materials/available", (LoncotesLibraryDbContext db) =>
 {
     return db.Materials
+    .Include(m => m.Genre) // material to m.Genre
+    .Include(m => m.MaterialType) // material to m.MaterialType
     .Where(m => m.OutOfCirculationSince == null)
     .Where(m => m.Checkouts.All(co => co.ReturnDate != null))
     .OrderBy(m => m.Id)
@@ -220,6 +227,15 @@ app.MapGet("/api/checkouts/overdue", (LoncotesLibraryDbContext db) =>
         (DateTime.Today - co.CheckoutDate).Days >
         co.Material.MaterialType.CheckoutDays &&
         co.ReturnDate == null)
+    .ToList();
+});
+
+app.MapGet("/api/checkouts", (LoncotesLibraryDbContext db) =>
+{
+    return db.Checkouts
+    .Include(p => p.Patron)
+    .Include(co => co.Material)
+    .ThenInclude(m => m.MaterialType)
     .ToList();
 });
 
