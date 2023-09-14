@@ -147,9 +147,9 @@ app.MapGet("/api/patrons/{patronId}", (LoncotesLibraryDbContext db, int patronId
 
 
 // Sometimes patrons move or change their email address. Add an endpoint that updates these properties only.
-app.MapPut("/api/patrons/{patronId}", (LoncotesLibraryDbContext db, int patronId, Patron patron) =>
+app.MapPut("/api/patrons/{patron.Id}", (LoncotesLibraryDbContext db, Patron patron) =>
 {
-    Patron patronToUpdate = db.Patrons.SingleOrDefault(patron => patron.Id == patronId);
+    Patron patronToUpdate = db.Patrons.SingleOrDefault(p => p.Id == patron.Id);
     if (patronToUpdate == null)
     {
         return Results.NotFound();
@@ -162,7 +162,7 @@ app.MapPut("/api/patrons/{patronId}", (LoncotesLibraryDbContext db, int patronId
 });
 
 // Sometimes patrons move out of the county. Allow the librarians to deactivate a patron (another soft delete example!).
-app.MapPut("/api/deactivatepatrons/{patronId}", (LoncotesLibraryDbContext db, int patronId) =>
+app.MapPut("/api/patrons/deactivate/{patronId}", (LoncotesLibraryDbContext db, int patronId) =>
 {
     Patron patronToUpdate = db.Patrons.SingleOrDefault(patron => patron.Id == patronId);
     if (patronToUpdate == null)
