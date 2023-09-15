@@ -175,6 +175,20 @@ app.MapPut("/api/patrons/deactivate/{patronId}", (LoncotesLibraryDbContext db, i
     return Results.NoContent();
 });
 
+// Activate a person
+app.MapPut("/api/patrons/activate/{patronId}", (LoncotesLibraryDbContext db, int patronId) =>
+{
+    Patron patronToUpdate = db.Patrons.SingleOrDefault(patron => patron.Id == patronId);
+    if (patronToUpdate == null)
+    {
+        return Results.NotFound();
+    }
+    patronToUpdate.IsActive = true;
+
+    db.SaveChanges();
+    return Results.NoContent();
+});
+
 // The librarians need to be able to checkout items for patrons. Add an endpoint to create a new Checkout for a material and patron. Automatically set the checkout date to DateTime.Today.
 app.MapPost("/api/checkouts", (LoncotesLibraryDbContext db, Checkout newCheckout) =>
 {
